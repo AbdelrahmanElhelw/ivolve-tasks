@@ -1,0 +1,16 @@
+# Java & Maven
+target/
+*.jar
+*.war
+*.class
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+
+# OS & IDEs
+.vscode/
+.idea/
+*.swp
