@@ -81,7 +81,3 @@ java -jar target/calculator.jar
 
 <img width="1158" height="166" alt="Run verify" src="https://github.com/user-attachments/assets/e3e612d8-537b-479e-9d7a-05f2045b9c8e" />
 
----
-
-### ✅ Verification Complete
-The application executes seamlessly in a headless Linux environment, confirming that all dependencies and compiled bytecode are properly bundled inside the artifact!
