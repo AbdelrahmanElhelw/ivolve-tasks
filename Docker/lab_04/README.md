@@ -1,146 +1,141 @@
-# 🐳 Containerizing a Java Spring Boot Application with Docker
+# 🐳 Optimizing Java Docker Images with Pre-Compiled Artifacts (Lab 04)
 
-This project demonstrates how to containerize a Java 17 Spring Boot application using **Docker**. It implements critical DevOps and cloud engineering best practices, including **Docker Layer Caching** for rapid builds and **Non-Root User Security** to ensure the container runs safely in production environments.
+This project demonstrates an advanced DevOps pattern: **decoupling the build phase from the runtime environment**. Instead of compiling the Java application inside Docker (which bloats the image with build tools like Maven), we compile the artifact on the host machine first and inject the pre-built `.jar` into a lightweight **Amazon Corretto Alpine** runtime container.
 
 ---
 
 ## 🏗️ Architecture & Best Practices Implemented
 
-* **Alpine Linux Base (`eclipse-temurin-17-alpine`):** Uses a lightweight Linux distribution to reduce the overall attack surface and image size.
-* **Docker Layer Caching:** Copies `pom.xml` and runs `mvn dependency:go-offline` *before* copying the source code. This ensures external dependencies are cached in a dedicated Docker layer, preventing re-downloads when only application code changes.
-* **Principle of Least Privilege (Non-Root User):** Creates a dedicated `appuser` and assigns explicit ownership (`chown`) to prevent the application from running with root privileges inside the container.
+* **Pre-Compiled Artifact Injection:** Compiles the application on the build host (`mvn clean package`) and copies only the distributable artifact into the runtime container, eliminating build dependency bloat.
+* **Minimal Runtime Image (`amazoncorretto:17-alpine3.23`):** Uses an optimized, production-grade Java Runtime Environment (JRE) on Alpine Linux to minimize disk footprint and reduce security vulnerabilities.
+* **Non-Root Security Compliance:** Creates a dedicated non-root user (`appuser`) to execute the Java application safely, adhering to the principle of least privilege.
+* **Reduced Attack Surface:** Because the base image is a pure runtime environment, unnecessary utilities (like `bash` or `curl`) are stripped away by default.
 
 ---
 
-## Step 1: Verify Local Application Build
+## Step 1: Build the Application Locally
 
-Before containerizing, verify that the Java application compiles and builds successfully using local build tools:
+Before building the Docker image, compile the source code and generate the executable Java Archive (`.jar`) using your local Maven build tools:
 
 ```bash
 mvn clean package
 ```
 
-<img width="1000" alt="Local Build Success" src="./screenshots/Screenshot 2026-07-07 142356.png" />
+<img width="1000" alt="Maven Local Build Success" src="./screenshots/mvn_build.png" />
+
+* **Result:** Maven compiles the source code and creates `demo-0.0.1-SNAPSHOT.jar` inside the local `target/` directory.
 
 ---
 
-## Step 2: The Optimized Single-Stage Dockerfile
+## Step 2: Configure the Lightweight Runtime Dockerfile
 
-Create a `Dockerfile` in the project root with the following configuration:
+Create a `Dockerfile` in the root directory configured exclusively for runtime execution:
 
 ```dockerfile
-# 1. Use Maven base image with Java 17 (Alpine version for smaller footprint)
-FROM maven:3.9-eclipse-temurin-17-alpine
+# 1. Use a minimal Amazon Corretto Java 17 runtime on Alpine Linux
+FROM amazoncorretto:17-alpine3.23
 
-# 2. Create a non-root user for security compliance
+# 2. Set the working directory inside the container
+WORKDIR /app1
+
+# 3. Create a non-root user for security compliance
 RUN adduser -D appuser
 
-# 3. Create work directory inside the container
-WORKDIR /app
-
-# 4. Cache dependencies (Docker Layer Caching Best Practice)
-COPY pom.xml .
-RUN mvn dependency:go-offline
-
-# 5. Copy source code and build the application
-COPY src ./src
-RUN mvn clean package -DskipTests
-
-# 6. Grant non-root user ownership of the working directory
-RUN chown -R appuser:appuser /app
-
-# 7. Switch to non-root user execution
+# 4. Switch to the non-root user
 USER appuser
 
-# 8. Expose application port
+# 5. Copy the pre-built JAR artifact from the host target directory
+COPY target/demo-0.0.1-SNAPSHOT.jar .
+
+# 6. Expose the application traffic port
 EXPOSE 8080
 
-# 9. Define startup command
-CMD ["java", "-jar", "target/demo-0.0.1-SNAPSHOT.jar"]
+# 7. Define the startup execution command
+CMD ["java", "-jar", "demo-0.0.1-SNAPSHOT.jar"]
 ```
+
+<img width="1000" alt="Dockerfile Configuration" src="./screenshots/image_383e7e.png" />
 
 ---
 
-## Step 3: Build the Docker Image & Inspect Size
+## Step 3: Build the Runtime Image & Verify Optimization
 
-Execute the Docker build command to tag the image as `lab1`. Notice how Docker executes the layers sequentially, caching dependencies:
+Build the Docker image and tag it as `lab_04_img`. Notice how quickly the build executes because it does not need to download Maven dependencies or compile code:
 
 ```bash
-# Build the Docker image
-docker build -t lab1 .
+# Build the optimized runtime image
+docker build -t lab_04_img .
+```
 
-# Inspect generated images and note the disk usage size
+<img width="1000" alt="Docker Build Execution" src="./screenshots/docker_build_image.png" />
+
+Verify the newly generated image and compare its disk usage size:
+
+```bash
+# List local Docker images
 docker images
 ```
 
-<img width="1000" alt="Docker Build and Image Size" src="./screenshots/DockerBuild.png" />
+<img width="1000" alt="Docker Images Size Comparison" src="./screenshots/docker_images_run.png" />
 
-> **💡 Note on Image Size:** The resulting image is **671MB** because it includes the full Maven build toolkit and downloaded repositories. While acceptable for development environments, production deployments typically utilize **Multi-Stage Builds** to strip away build tools and shrink the runtime artifact.
+> **💡 Optimization Analysis:** Notice that `lab_04_img` is only **490MB**, significantly smaller than the **671MB** image from Lab 3. By removing Maven from the base image, we eliminated over 180MB of unnecessary build tools!
 
 ---
 
-## Step 4: Launch the Container & Map Ports
+## Step 4: Deploy and Run the Container
 
-Run the container in detached mode (`-d`) and map host port `70` to the container's exposed port `8080`. Verify the container is running and healthy:
+Launch the container in detached mode (`-d`), mapping host port `70` to container port `8080`:
 
 ```bash
-# Run container in detached mode with port mapping
-docker run -d -p 70:8080 --name=cont1 lab1
+# Run the container with port forwarding
+docker run -d -p 70:8080 --name lab04_cont1 lab_04_img
 
-# Check active running containers
+# Verify container running status
 docker ps
-
-Note: the output image if before port mapping 
 ```
-
-<img width="1000" alt="Docker Run and PS" src="./screenshots/Docker_Run&_ps.png" />
 
 ---
 
-## Step 5: External Verification (Host to Container)
+## Step 5: Verify Application Accessibility from Host
 
-Test the port forwarding by sending an HTTP request from your local machine to host port `70`:
+Test the port mapping by sending an HTTP request from your local host machine to port `70`:
 
 ```bash
 curl localhost:70
 ```
 
-<img width="1000" alt="Test Port Mapping" src="./screenshots/test_port_mapping.png" />
+<img width="1000" alt="Testing Application from Local Host" src="./screenshots/Testing_app_from_local.png" />
 
-* **Result:** The server successfully responds with `Hello from Dockerized Spring Boot!`, confirming traffic is routing cleanly from host port `70` into container port `8080`.
+* **Result:** The application responds successfully with `Hello from Dockerized Spring Boot!`, confirming traffic routes correctly into the non-root runtime container.
 
 ---
 
-## Step 6: Container Introspection & Debugging (`exec`)
+## Step 6: Container Introspection (`exec`) & Security Validation
 
-To inspect the internal file system and verify that the JAR file compiled correctly inside the container, open an interactive bash shell:
+Open an interactive shell inside the running container to inspect the working directory. Note that because Alpine Linux is used, we must invoke `sh` instead of `bash`:
 
 ```bash
-# Access container interactive terminal
-docker exec -it cont1 bash
+# Access the container filesystem using standard shell
+docker exec -it lab04_cont1 sh
 
-# Inspect workspace root and target artifacts
+# Verify the JAR artifact is present in the workspace
 ls
-ls target/
-
-# Test internal loopback communication directly inside the container
-curl localhost:8080
 ```
 
-<img width="1000" alt="Docker Exec and Internal Testing" src="./screenshots/docker_exec_&_test_container.png" />
+<img width="1000" alt="Docker Exec and Filesystem Inspection" src="./screenshots/docker_exec_image_ls.png" />
 
-* **Verification:** The terminal confirms the presence of `demo-0.0.1-SNAPSHOT.jar` inside the `/app/target/` directory, and internal HTTP requests resolve successfully.
+> **🛡️ Security Pro-Tip (`curl: not found`):** Notice what happened when attempting to run `curl localhost:8080` *inside* the container terminal: the shell returned `sh: curl: not found`. **This is not a bug; it is a security feature!** Pure runtime images like Amazon Corretto Alpine intentionally exclude networking utilities like `curl` or `wget` so that if an attacker ever breaches the application, they cannot easily download malicious scripts from the internet.
 
 ---
 
 ## Step 7: Lifecycle Cleanup
 
-Once verification is complete, gracefully stop and remove the container from your environment:
+Once verification and testing are complete, gracefully stop and remove the container instance:
 
 ```bash
-# Stop running container
-docker stop cont1
+# Stop the running container
+docker stop lab04_cont1
 
-# Remove container instance
-docker rm cont1
+# Remove the container from the environment
+docker rm lab04_cont1
 ```
