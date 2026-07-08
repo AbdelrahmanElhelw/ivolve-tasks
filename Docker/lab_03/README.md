@@ -89,6 +89,8 @@ docker run -d -p 70:8080 --name=cont1 lab1
 
 # Check active running containers
 docker ps
+
+Note: the output image if before port mapping 
 ```
 
 <img width="1000" alt="Docker Run and PS" src="./screenshots/Docker_Run&_ps.png" />
