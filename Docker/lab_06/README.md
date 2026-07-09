@@ -25,7 +25,7 @@ COPY app.py .
 CMD ["python", "app.py"]
 ```
 
-![Dockerfile Version 1](./screenshots/image_636d06.png)
+
 
 Build the image as `lab06_img` and run the baseline container on port `70`:
 
