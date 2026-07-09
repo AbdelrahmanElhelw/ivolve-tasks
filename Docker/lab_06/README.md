@@ -1,103 +1,138 @@
-# 🐳 Advanced Docker Optimization: Multi-Stage Builds (Lab 05)
+# 🐳 Managing Environment Variables in Docker (Lab 06)
 
-This project demonstrates the industry-standard DevOps pattern for containerizing compiled Java applications: **Multi-Stage Builds**. 
-
-By utilizing multiple `FROM` statements within a single Dockerfile, we automate the entire Maven build and dependency resolution process inside a temporary container, but only package the final compiled `.jar` artifact into a lightweight runtime image. This eliminates the need for developers to install Maven locally while keeping the production image secure, minimal, and free of source code and build tools.
+This project demonstrates the three primary DevOps methodologies for configuring and injecting **Environment Variables** into a containerized application. Using a Python Flask microservice running on lightweight Alpine Linux, we explore how application behavior can be dynamically altered across different deployment environments (Development, Staging, and Production) without modifying or rebuilding the underlying application source code.
 
 ---
 
-## 🏗️ Architecture & Best Practices Implemented
+## 🏗️ Architecture & Core Concepts
 
-* **Stage 1 (The Builder):** Uses `maven:3.9.16-eclipse-temurin-17-alpine` to compile the application and generate the target artifact inside isolated container layers.
-* **Stage 2 (The Runtime):** Uses `amazoncorretto:17-alpine3.21-full` as a bare-minimum Java 17 runtime environment. It copies *only* the compiled JAR file from Stage 1 (`--from=build`), leaving behind the Maven SDK, source code, and cached package repositories.
-* **Zero Local Dependencies:** The application builds reliably on any environment with Docker installed, guaranteeing 100% build consistency across different CI/CD pipelines and developer machines.
+* **Dynamic Configuration:** Decouples configuration from code. The Python application (`app.py`) reads `APP_MODE` and `APP_REGION` at runtime; if no variables are provided, it falls back to internal default values.
+* **Method 1 (CLI Injection):** Using the `-e` flag during `docker run` for quick testing and overrides.
+* **Method 2 (Env Files):** Using `--env-file` to load multiple configurations cleanly from a centralized file (ideal for complex multi-variable deployments).
+* **Method 3 (Dockerfile Defaults):** Using the `ENV` instruction inside the Dockerfile to bake default fallback values directly into the image layers.
 
 ---
 
-## Step 1: Configure the Multi-Stage Dockerfile
+## Step 1: Baseline Setup (Dockerfile Version 1 & Default Execution)
 
-Create or edit your `Dockerfile` using your preferred terminal editor:
-
-```bash
-vim Dockerfile
-```
-
-Paste the following multi-stage configuration:
+Create the initial `Dockerfile` without any hardcoded environment variables. This allows us to observe how the application behaves when no configuration is passed:
 
 ```dockerfile
-# === STAGE 1: Build the Application ===
-FROM maven:3.9.16-eclipse-temurin-17-alpine AS build
-WORKDIR /app1
-# Copy source code and package the artifact
-COPY . .
-RUN mvn package
-
-# === STAGE 2: Lightweight Runtime ===
-FROM amazoncorretto:17-alpine3.21-full
+FROM python:3.15-rc-alpine3.23
 WORKDIR /app
-# Extract ONLY the compiled .jar from the "build" stage above
-COPY --from=build /app1/target/demo-0.0.1-SNAPSHOT.jar .
-
-# Define startup command and expose application port
-CMD ["java", "-jar", "demo-0.0.1-SNAPSHOT.jar"]
-EXPOSE 8080
-```
----
-
-## Step 2: Execute the Multi-Stage Build
-
-Run the standard Docker build command to compile the code and generate the final image tagged as `lab05_img`:
-
-```bash
-docker build -t lab05_img .
+RUN pip install flask
+COPY app.py .
+CMD ["python", "app.py"]
 ```
 
-![Docker Multi-Stage Build Execution](./screenshots/docker_build.png)
+![Dockerfile Version 1](./screenshots/image_636d06.png)
 
-> **💡 Build Layer Analysis:** Notice in the build output how Docker sequentially processes `[build 1/4]` through `[build 4/4]` to run `mvn package`, and then immediately switches to `[stage-1 1/3]` to build the runtime image. Once the artifact is copied over, the entire heavy Maven build container is discarded from the final image!
-
----
-
-## Step 3: Deploy the Container with Port Forwarding
-
-Launch the runtime container in detached mode (`-d`), mapping host port `70` to the container's exposed port `8080`:
+Build the image as `lab06_img` and run the baseline container on port `70`:
 
 ```bash
-docker run --name lab05_cont -d -p 70:8080 lab05_img
-```
+# Build the baseline image
+docker build -t lab06_img .
 
----
+# Run the container without providing environment variables
+docker run -d -p 70:8080 --name lab06_cont lab06_img
 
-## Step 4: Verify Application & Inspect Runtime Environment
-
-Test external HTTP traffic from the host machine, and then open an interactive shell inside the container to prove that the runtime environment is completely clean and only contains the executable `.jar` file.
-
-```bash
-# 1. Test application response from the local host
+# Test the application response
 curl localhost:70
-
-# 2. Access the container filesystem using standard shell
-docker exec -it lab05_cont sh
-
-# 3. List workspace directory contents
-ls
 ```
 
-![Docker Exec and Host Curl Verification](./screenshots/docker_exec_curl_test.png)
+![Default Environment Variables Output](./screenshots/container_with_default_vars.png)
 
-* **Verification Results:** * The `curl` command successfully returns `Hello from Dockerized Spring Boot!`, confirming port `70` is correctly routing traffic to container port `8080`.
-  * Running `ls` inside `/app` displays *only* `demo-0.0.1-SNAPSHOT.jar`. No source files, no `pom.xml`, and no build directories exist in the final container!
+* **Baseline Result:** The application responds with `App mode: default, Region: unknown`, confirming that the application gracefully utilizes its fallback values when no external variables are present.
+
+---
+
+## Step 2: Method 1 — Inline CLI Injection (`-e` Flag)
+
+To dynamically set environment variables for ad-hoc testing or simple container deployments, pass the `-e` flag directly into the `docker run` command:
+
+```bash
+# Launch container with inline environment variables mapped to port 71
+docker run -d -p 71:8080 -e APP_MODE=development -e APP_REGION=us-east --name lab06_cont2 lab06_img
+
+# Verify variable injection
+curl localhost:71
+```
+
+![CLI Environment Variable Injection](./screenshots/first_method.png)
+
+* **Method 1 Result:** The application outputs `App mode: development, Region: us-east`, successfully overriding the baseline defaults.
+
+---
+
+## Step 3: Method 2 — Centralized Configuration (`--env-file`)
+
+When deploying applications with dozens of variables (e.g., database credentials, API keys), inline flags become unmanageable. The industry standard is to define variables in an external file (e.g., `envfile`) and pass it via `--env-file`:
+
+```bash
+# Create an environment file (example contents: APP_MODE=staging, APP_REGION=us-west)
+# Launch container using the external configuration file mapped to port 72
+docker run -d -p 72:8080 --env-file=envfile --name lab06_cont3 lab06_img
+
+# Verify file-based variable injection
+curl localhost:72
+```
+
+![Env File Injection Output](./screenshots/second_method_file.png)
+
+* **Method 2 Result:** The application reads the file contents and returns `App mode: staging, Region: us-west`.
+
+---
+
+## Step 4: Method 3 — Baked-In Image Defaults (Dockerfile Version 2)
+
+If an application requires strict default operational parameters (such as defaulting to production settings unless explicitly overridden), use the `ENV` instruction inside the Dockerfile.
+
+Modify your `Dockerfile` to include the default `ENV` instructions:
+
+```dockerfile
+FROM python:3.15-rc-alpine3.23
+WORKDIR /app
+RUN pip install flask
+
+ENV APP_MODE=production
+ENV APP_REGION=canada-west
+
+COPY app.py .
+CMD ["python", "app.py"]
+```
+
+![Dockerfile Version 2 with ENV Instructions](./screenshots/third_method_Dockerfile_with_env_vars.png)
+
+Build this new configuration as a separate image (`lab06_img2`) and run it without any CLI overrides on port `73`:
+
+```bash
+# Build the secondary image containing default ENV instructions
+docker build -t lab06_img2 .
+
+# Run container without CLI variables to test baked-in defaults
+docker run -d -p 73:8080 --name lab06_cont4 lab06_img2
+
+# Verify baked-in values
+curl localhost:73
+```
+
+![Baked-In ENV Output](./screenshots/third_method_output.png)
+
+* **Method 3 Result:** The container automatically initializes with `App mode: production, Region: canada-west` directly from the image layers!
 
 ---
 
 ## Step 5: Lifecycle Cleanup
 
-Once testing and verification are complete, stop and remove the container instance to keep your local Docker environment clean:
+Once all three configuration methodologies have been verified, stop and remove all active containers and test images to maintain a clean workspace:
 
 ```bash
-# Stop the running container
-docker stop lab05_cont
+# Stop all lab 06 containers
+docker stop lab06_cont lab06_cont2 lab06_cont3 lab06_cont4
 
-# Remove the container instance
-docker rm lab05_cont
+# Remove all lab 06 containers
+docker rm lab06_cont lab06_cont2 lab06_cont3 lab06_cont4
+
+# Optional: Remove test images
+docker rmi lab06_img lab06_img2
 ```
