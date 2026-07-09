@@ -41,10 +41,6 @@ COPY --from=build /app1/target/demo-0.0.1-SNAPSHOT.jar .
 # Define startup command and expose application port
 CMD ["java", "-jar", "demo-0.0.1-SNAPSHOT.jar"]
 EXPOSE 8080
-```
-
-![Multi-Stage Dockerfile Configuration](./screenshots/image_588c1e.png)
-
 ---
 
 ## Step 2: Execute the Multi-Stage Build
