@@ -1,103 +1,104 @@
-# 🐳 Advanced Docker Optimization: Multi-Stage Builds (Lab 05)
+# 🐳 Docker Storage: Volumes and Bind Mounts with Nginx (Lab 07)
 
-This project demonstrates the industry-standard DevOps pattern for containerizing compiled Java applications: **Multi-Stage Builds**. 
+This project demonstrates the core Docker storage methodologies: **Volumes** and **Bind Mounts**, using an Nginx web server. 
 
-By utilizing multiple `FROM` statements within a single Dockerfile, we automate the entire Maven build and dependency resolution process inside a temporary container, but only package the final compiled `.jar` artifact into a lightweight runtime image. This eliminates the need for developers to install Maven locally while keeping the production image secure, minimal, and free of source code and build tools.
-
----
-
-## 🏗️ Architecture & Best Practices Implemented
-
-* **Stage 1 (The Builder):** Uses `maven:3.9.16-eclipse-temurin-17-alpine` to compile the application and generate the target artifact inside isolated container layers.
-* **Stage 2 (The Runtime):** Uses `amazoncorretto:17-alpine3.21-full` as a bare-minimum Java 17 runtime environment. It copies *only* the compiled JAR file from Stage 1 (`--from=build`), leaving behind the Maven SDK, source code, and cached package repositories.
-* **Zero Local Dependencies:** The application builds reliably on any environment with Docker installed, guaranteeing 100% build consistency across different CI/CD pipelines and developer machines.
+By implementing both storage types in a single container deployment, we explore how to persist application log files safely inside the Docker-managed storage engine (`/var/lib/docker/volumes`) while simultaneously serving dynamic, live-reloading HTML content directly from the host machine's filesystem.
 
 ---
 
-## Step 1: Configure the Multi-Stage Dockerfile
+## 🏗️ Storage Architecture & Concepts
 
-Create or edit your `Dockerfile` using your preferred terminal editor:
+* **Bind Mount (`./nginx-bind/html` ➔ `/usr/share/nginx/html`):** Maps a directory from the local host filesystem directly into the container. When files are modified on the host machine, the changes are instantly reflected inside the container without requiring a rebuild or restart. Perfect for development workflows.
+* **Persistent Volume (`logs` ➔ `/var/log/nginx`):** A Docker-managed storage volume fully isolated from the host directory structure. It guarantees that critical application data (like access and error logs) persist independently of the container's lifecycle.
+
+---
+
+## Step 1: Prepare Host Directories and Create Persistent Volume
+
+First, create a local directory and an `index.html` file on the host machine to serve as our Bind Mount source. Then, initialize a Docker persistent volume to capture Nginx log data:
 
 ```bash
-vim Dockerfile
-```
+# Create local directory for custom HTML content
+mkdir -p nginx-bind/html
 
-Paste the following multi-stage configuration:
+# Create initial HTML file on the host machine
+echo "Hello from Bind Mount" > nginx-bind/html/index.html
 
-```dockerfile
-# === STAGE 1: Build the Application ===
-FROM maven:3.9.16-eclipse-temurin-17-alpine AS build
-WORKDIR /app1
-# Copy source code and package the artifact
-COPY . .
-RUN mvn package
-
-# === STAGE 2: Lightweight Runtime ===
-FROM amazoncorretto:17-alpine3.21-full
-WORKDIR /app
-# Extract ONLY the compiled .jar from the "build" stage above
-COPY --from=build /app1/target/demo-0.0.1-SNAPSHOT.jar .
-
-# Define startup command and expose application port
-CMD ["java", "-jar", "demo-0.0.1-SNAPSHOT.jar"]
-EXPOSE 8080
-```
----
-
-## Step 2: Execute the Multi-Stage Build
-
-Run the standard Docker build command to compile the code and generate the final image tagged as `lab05_img`:
-
-```bash
-docker build -t lab05_img .
-```
-
-![Docker Multi-Stage Build Execution](./screenshots/docker_build.png)
-
-> **💡 Build Layer Analysis:** Notice in the build output how Docker sequentially processes `[build 1/4]` through `[build 4/4]` to run `mvn package`, and then immediately switches to `[stage-1 1/3]` to build the runtime image. Once the artifact is copied over, the entire heavy Maven build container is discarded from the final image!
-
----
-
-## Step 3: Deploy the Container with Port Forwarding
-
-Launch the runtime container in detached mode (`-d`), mapping host port `70` to the container's exposed port `8080`:
-
-```bash
-docker run --name lab05_cont -d -p 70:8080 lab05_img
+# Create a Docker volume for log persistence
+docker volume create logs
 ```
 
 ---
 
-## Step 4: Verify Application & Inspect Runtime Environment
+## Step 2: Deploy Nginx Container with Multi-Storage Mapping
 
-Test external HTTP traffic from the host machine, and then open an interactive shell inside the container to prove that the runtime environment is completely clean and only contains the executable `.jar` file.
+Launch the Nginx container in detached mode (`-d`), mounting the local HTML folder as a bind mount and assigning the `logs` volume to Nginx's internal log directory:
 
 ```bash
-# 1. Test application response from the local host
-curl localhost:70
-
-# 2. Access the container filesystem using standard shell
-docker exec -it lab05_cont sh
-
-# 3. List workspace directory contents
-ls
+# Run Nginx container with both Bind Mount and Persistent Volume
+docker run --name lab07_cont -d \
+  -v ./nginx-bind/html:/usr/share/nginx/html \
+  -v logs:/var/log/nginx \
+  nginx
 ```
 
-![Docker Exec and Host Curl Verification](./screenshots/docker_exec_curl_test.png)
+![Run Nginx Container](./screenshots/Run%20Nginx%20container.png)
 
-* **Verification Results:** * The `curl` command successfully returns `Hello from Dockerized Spring Boot!`, confirming port `70` is correctly routing traffic to container port `8080`.
-  * Running `ls` inside `/app` displays *only* `demo-0.0.1-SNAPSHOT.jar`. No source files, no `pom.xml`, and no build directories exist in the final container!
+---
+
+## Step 3: Verify Bind Mount & Live Host-to-Container Sync
+
+Test the initial web server response from inside the container. Next, modify the `index.html` file directly from the local host machine and verify that Nginx immediately serves the updated content:
+
+```bash
+# 1. Access container shell and verify initial bind mount content
+docker exec -it lab07_cont bash
+curl localhost:80
+# (Type 'exit' to return to host terminal)
+
+# 2. Modify the HTML file directly on the host machine
+echo "test change" > nginx-bind/html/index.html
+
+# 3. Verify the change reflected instantly inside the running container
+docker exec -it lab07_cont bash
+curl localhost:80
+```
+
+![Verify Change in HTML Page](./screenshots/verify%20change%20in%20html%20page.png)
+
+* **Verification Result:** The web server seamlessly shifts from serving `"Hello from Bind Mount"` to `"test change"` without requiring a container restart, proving real-time bidirectional synchronization through the bind mount.
+
+---
+
+## Step 4: Verify Log Persistence inside Docker Volume
+
+Inspect the `/var/lib/docker/volumes/logs/_data` directory on the host filesystem to confirm that Nginx access and error logs are being actively recorded into the persistent volume:
+
+```bash
+# List contents of the Docker volume data directory
+sudo ls /var/lib/docker/volumes/logs/_data
+
+# Read the live access log generated by our previous curl requests
+sudo cat /var/lib/docker/volumes/logs/_data/access.log
+```
+
+![Verify Nginx Page and Logs](./screenshots/Verify%20Nginx%20page%20&%20Verify%20logs.png)
+
+* **Verification Result:** The `access.log` and `error.log` files are actively populated within the Docker volume filesystem, confirming proper log isolation and persistence.
 
 ---
 
 ## Step 5: Lifecycle Cleanup
 
-Once testing and verification are complete, stop and remove the container instance to keep your local Docker environment clean:
+Once testing is complete, gracefully stop the container, remove the container instance, and delete the persistent storage volume:
 
 ```bash
-# Stop the running container
-docker stop lab05_cont
+# Stop the running Nginx container
+docker stop lab07_cont
 
 # Remove the container instance
-docker rm lab05_cont
+docker rm lab07_cont
+
+# Remove the persistent storage volume
+docker volume rm logs
 ```
