@@ -1,6 +1,6 @@
-# 🐳 Docker Networking: Custom Microservices Architecture (Lab 08)
+# 🐳 Docker Networking: Custom Microservices Architecture (lab08)
 
-This project demonstrates how to configure **Custom Docker Networks** to securely connect multi-tier microservices (a Frontend and a Backend). 
+This project demonstrates how to configure **Custom Docker Networks** to securely connect multi-tier microservices (Frontend and Backend). 
 
 By default, Docker places containers on a standard bridge network. However, best practice dictates creating isolated, custom bridge networks for applications. This lab proves that containers on the same custom network can seamlessly communicate, while containers left on the default network are securely isolated from the backend.
 
