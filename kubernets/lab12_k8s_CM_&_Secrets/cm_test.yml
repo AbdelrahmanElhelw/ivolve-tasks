@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ivolve-cm
+data:
+  DB_ROOT_PASSWORD: abdo
+ 
