@@ -14,3 +14,7 @@ target/
 .vscode/
 .idea/
 *.swp
+
+
+# For me
+*commands*

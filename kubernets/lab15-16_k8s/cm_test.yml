@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ivolve-cm
+  namespace: ivolve
+data:
+  DB_HOST: "ivolve-statefulset-0.headless-svc.ivolve.svc.cluster.local"
+  DB_USER: ivolve
+  DB_PASSWORD: ivolve
+ 

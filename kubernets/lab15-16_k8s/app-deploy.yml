@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ivolve-deployment
+  namespace: ivolve
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: myapp
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+
+      tolerations:
+        - key: "node"
+          operator: "Equal"
+          value: "worker"
+
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node
+                operator: In
+                values:
+                - worker
+
+      initContainers:
+      - name: init-mysql-setup
+        image: mysql:5.7
+        env:
+        - name: ROOT_PASSWORD     #so it can create the database and give the user privilliges
+          valueFrom:
+            secretKeyRef:
+              name: ivolve-secret
+              key: DB_ROOT_PASSWORD
+        - name: DB_HOST       #so it can connect to the database and create the database and give the user privilliges
+          valueFrom:
+            configMapKeyRef:
+              name: ivolve-cm
+              key: DB_HOST
+        - name: DB_USER       #to give him privilliges  
+          valueFrom:
+            configMapKeyRef:
+              name: ivolve-cm
+              key: DB_USER
+
+        command:
+          - /bin/sh
+          - -c
+          - |
+            mysql -h "$DB_HOST" -u root -p"$ROOT_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS ivolve;"
+            mysql -h "$DB_HOST" -u root -p"$ROOT_PASSWORD" -e "GRANT ALL PRIVILEGES ON ivolve.* TO '$DB_USER'@'%';"
+            mysql -h "$DB_HOST" -u root -p"$ROOT_PASSWORD" -e "FLUSH PRIVILEGES;"
+
+      imagePullSecrets:
+        - name: dockerhub-secret
+      containers:
+      - name: mysql
+        image: abdelrahmanelhelw/kubernets-app:1
+        ports:
+        - containerPort: 3000
+        env:
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: ivolve-cm
+              key: DB_HOST
+        - name: DB_USER
+          valueFrom:
+            configMapKeyRef:
+              name: ivolve-cm
+              key: DB_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            configMapKeyRef:
+              name: ivolve-cm
+              key: DB_PASSWORD
+        
+        volumeMounts:
+          - name: app-logs
+            mountPath: /app/logs
+
+      volumes:
+        - name: app-logs
+          persistentVolumeClaim:
+            claimName: my-pvc
+
+
+    
+      
+
+        
