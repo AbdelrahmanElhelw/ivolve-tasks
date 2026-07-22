@@ -18,6 +18,7 @@ spec:
         - key: "node"
           operator: "Equal"
           value: "worker"
+          effect: "NoSchedule"
 
       affinity:
         nodeAffinity:
