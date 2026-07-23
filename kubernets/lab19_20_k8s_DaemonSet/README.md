@@ -3,7 +3,7 @@
 ## Project Overview
 This repository expands upon the previously established multi-tier Kubernetes deployment (which includes the Node.js frontend, MySQL StatefulSet, Ingress Controller, and Network Policies). The current phase (Labs 19 & 20) introduces cluster-wide hardware monitoring using DaemonSets and enforces the principle of least privilege using Role-Based Access Control (RBAC).
 
-![Lab Requirements](image_b5b2df.jpg)
+
 
 ## New Files Introduced
 The following files were added to the existing infrastructure to implement the monitoring and security requirements:
@@ -14,7 +14,7 @@ The following files were added to the existing infrastructure to implement the m
 *   **`RBAC/role.yml`**: Defines the restricted `pod-reader` Role.
 *   **`RBAC/rolebinding.yml`**: Binds the `pod-reader` Role to the `jenkins-sa` ServiceAccount.
 
-![Directory Structure](image_b5b31b.png)
+
 
 ---
 
