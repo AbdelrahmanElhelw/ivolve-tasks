@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ivolve-lab22-deployment
+  labels:
+    app: ivolve-lab22
+sepc:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ivolve-lab22
+  template:
+    metadata:
+      labels:
+        app: ivolve-lab22
+    spec:
+      containers:
+      - name: ivolve-lab22
+        image: image1
+        ports:
+        - containerPort: 8080
+        imagePullPolicy: Always
