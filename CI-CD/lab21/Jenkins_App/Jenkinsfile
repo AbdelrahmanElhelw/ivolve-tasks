@@ -18,6 +18,14 @@ pipeline {
             }
         }
 
+        stage('Build Apllication'){
+            steps {
+                dir('CI-CD/lab21/Jenkins_App') {
+                sh 'mvn clean package'
+            }
+            }
+        }
+
         stage('Build Docker Image'){
             steps {
                 dir('CI-CD/lab21/Jenkins_App'){
