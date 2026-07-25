@@ -13,8 +13,8 @@ pipeline {
                 sh  'cd CI-CD/lab21/Jenkins_App'
                 }
             }
-        }
         
+
         stage('Run Unit Tests'){
             steps {
                 sh 'mvn test'
