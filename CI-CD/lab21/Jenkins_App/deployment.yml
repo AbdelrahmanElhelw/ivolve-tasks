@@ -4,7 +4,7 @@ metadata:
   name: ivolve-lab22-deployment
   labels:
     app: ivolve-lab22
-sepc:
+spec:
   replicas: 1
   selector:
     matchLabels:
