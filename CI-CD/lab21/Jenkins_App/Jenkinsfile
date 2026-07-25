@@ -81,7 +81,7 @@ pipeline {
             steps {
                 dir('CI-CD/lab21/Jenkins_App') {
                 withCredentials([string(credentialsId: 'Kubernets', variable: 'TOKEN')]) {
-                    sh ' kubectl apply -f deployment.yml --server=https://192.168.49.2:32771 --token=$TOKEN --insecure-skip-tls-verify=true --validate=false'
+                    sh ' kubectl apply -f deployment.yml --server=https://192.168.49.2:8443 --token=$TOKEN --insecure-skip-tls-verify=true --validate=false'
                 }
             }
             }
