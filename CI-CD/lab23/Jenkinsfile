@@ -25,7 +25,7 @@ pipeline {
         stage('Build and Push Docker Image and Remove Local Image'){
             steps{
                 dir('CI-CD/lab23'){
-                    buildandPushImage("${IMAGE_NAME}:${BUILD_NUMBER}" , 'DockerHub')       
+                    buildandPushImage("${IMAGE_NAME}:${BUILD_NUMBER}" , "DockerHub")       
                 }
             }
         }
