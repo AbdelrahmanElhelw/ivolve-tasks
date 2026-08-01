@@ -4,7 +4,7 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME=abdelrahmanelhelw/ivolve-lab23-app
+        IMAGE_NAME="abdelrahmanelhelw/ivolve-lab23-app"
     }
 
     tools {
