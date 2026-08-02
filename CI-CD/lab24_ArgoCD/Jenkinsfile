@@ -38,7 +38,15 @@ pipeline {
     //         }
 
     //     }
-    // }        we will do it with ArgoCD so we don't need to do it here
+    // }        we will deploy the deployment file using ArgoCD instead of Jenkins pipeline 
+
+        stage('Update Deployment File'){
+            steps{
+                dir('CI-CD/lab24_ArgoCD'){
+                    editDeployImage("${IMAGE_NAME}:${BUILD_NUMBER}" , "deployment.yml" )
+                }
+            }
+        }
 
         stage("Push The New Deployment File into GitHub"){
             steps{
