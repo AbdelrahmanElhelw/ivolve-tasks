@@ -2,9 +2,9 @@
 
 pipeline {
     agent any
-    
+
     environment {
-        IMAGE_NAME="abdelrahmanelhelw/ivolve-lab24_ArgoCD-app"
+        IMAGE_NAME="abdelrahmanelhelw/ivolve-lab24_argocd-app"
     }
 
     tools {
