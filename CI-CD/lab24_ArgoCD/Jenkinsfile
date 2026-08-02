@@ -40,7 +40,17 @@ pipeline {
     //     }
     // }        we will do it with ArgoCD so we don't need to do it here
 
+        stage("Push The New Deployment File into GitHub"){
+            steps{
+                dir('CI-CD/lab24_ArgoCD'){
+                    pushDeploymentFileToGitHub( "deployment.yml" , "GitHub" , "ivolve-tasks" )
+                }
+            }
+        }
+
 
 }
+
+
 
 }
