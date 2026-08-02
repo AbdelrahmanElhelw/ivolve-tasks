@@ -1,0 +1,46 @@
+@Library('ivolve_shared_lib') _
+
+pipeline {
+    agent any
+    
+    environment {
+        IMAGE_NAME="abdelrahmanelhelw/ivolve-lab24_ArgoCD-app"
+    }
+
+    tools {
+        maven 'maven' 
+    }
+
+    stages{
+
+
+        stage('Run Unit Tests'){
+            steps{
+                dir('CI-CD/lab24_ArgoCD'){
+                    buildJavaApp()
+                }
+            }
+        }
+
+        stage('Build and Push Docker Image and Remove Local Image'){
+            steps{
+                dir('CI-CD/lab24_ArgoCD'){
+                    buildandPushImage("${IMAGE_NAME}:${BUILD_NUMBER}" , "DockerHub")       
+                }
+            }
+        }
+
+    //     stage('Update Deployment File & Deploy to k8s'){
+    //     steps{
+    //         dir('CI-CD/lab24_ArgoCD'){
+    //             deployTokenK8s("${IMAGE_NAME}:${BUILD_NUMBER} ", "deployment.yml" ,"Kubernets" , "https://192.168.49.2:8443")
+
+    //         }
+
+    //     }
+    // }        we will do it with ArgoCD so we don't need to do it here
+
+
+}
+
+}
