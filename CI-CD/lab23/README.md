@@ -9,7 +9,7 @@ This project demonstrates a complete CI/CD pipeline using **Jenkins**, **Docker*
 We provisioned a Jenkins Agent using the official `jenkins/ssh-agent:jdk21` Docker image, attached it to the `minikube` network, and mounted the Docker socket to allow building images inside the agent. 
 
 The agent was successfully connected to the Jenkins Master via SSH:
-![Jenkins Agent Logs](Agent-Logs.png)
+![Jenkins Agent Logs](./screenshots/Agent-Logs.png)
 
 ### 2. Required Tools Installation
 The agent container was customized to include:
@@ -32,4 +32,4 @@ Using the custom functions from our Shared Library, the pipeline successfully ex
 4.  Build and Push Docker Image
 5.  Update Deployment File & Deploy to k8s
 
-![Successful Pipeline](success_pipeline.png)
+![Successful Pipeline](./screenshots/success_pipeline.png)
