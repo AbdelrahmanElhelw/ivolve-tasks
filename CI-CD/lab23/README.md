@@ -32,5 +32,4 @@ Using the custom functions from our Shared Library, the pipeline successfully ex
 4.  Build and Push Docker Image
 5.  Update Deployment File & Deploy to k8s
 
-
-![Successful Pipeline](./screenshots/success_pipeline.png)
+![Successful Pipeline](screenshots/success_pipeline.png)
