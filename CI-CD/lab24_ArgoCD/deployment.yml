@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: ivolve-lab24
-        image: abdelrahmanelhelw/ivolve-lab24_argocd
+        image: abdelrahmanelhelw/ivolve-lab24_argocd-app:9
         ports:
         - containerPort: 8080
         imagePullPolicy: Always
