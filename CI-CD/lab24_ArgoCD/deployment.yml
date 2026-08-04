@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ivolve-lab22-deployment
+  name: ivolve-lab24-deployment
   labels:
-    app: ivolve-lab22
+    app: ivolve-lab24
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: ivolve-lab22
+      app: ivolve-lab24
   template:
     metadata:
       labels:
-        app: ivolve-lab22
+        app: ivolve-lab24
     spec:
       containers:
-      - name: ivolve-lab22
-        image: nginx
+      - name: ivolve-lab24
+        image: abdelrahmanelhelw/ivolve-lab24_argocd
         ports:
         - containerPort: 8080
         imagePullPolicy: Always
