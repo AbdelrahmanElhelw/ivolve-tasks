@@ -1,0 +1,27 @@
+---
+- name: Install and configure Nginx
+  hosts: managed_nodes
+  become: yes
+  tasks:
+    - name: Install Nginx
+      dnf:
+        name: nginx
+        state: present
+        update_cache: yes
+
+    - name: Create Custom index Page
+      copy:
+        dest: /usr/share/nginx/html/index.html
+        content: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Welcome to Nginx!</title>
+          </head>
+          <body>
+            <h1>Success! Nginx is installed and running.</h1>
+          </body>
+          </html>
+
+    - name: Start Nginx service
+      command: nginx
