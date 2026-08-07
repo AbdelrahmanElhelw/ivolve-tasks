@@ -43,4 +43,4 @@ curl http://localhost:80
 **Verification Output:**
 The customized HTML page was successfully returned, confirming that Nginx was perfectly installed and configured by the Ansible Playbook.
 
-![Verification Output](./screenshots/check on managed node.png)
+![Verification Output](./screenshots/check%20on%20managed%20node.png)
