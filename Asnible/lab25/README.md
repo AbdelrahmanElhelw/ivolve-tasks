@@ -78,4 +78,4 @@ ansible managed_nodes -i inventory.ini -m shell -a "df -h"
 ## ✅ Expected Output
 The `df -h` command successfully returned the filesystem disk space usage for both `172.17.0.2` and `172.17.0.3` with a `CHANGED | rc=0` status, confirming successful passwordless SSH execution via Ansible.
 
-![Ad-Hoc Command Output](./screenshots/Adhock_2.png)
+![Ad-Hoc Command Output](./screenshots/Adhock.png)
