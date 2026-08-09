@@ -1,0 +1,9 @@
+---
+- name: install Kubectl , Docker and Jenkins
+  hosts: managed_nodes
+  become: yes
+  gather_facts: yes
+  roles:
+    - docker
+    - jenkins
+    - kubectl

@@ -1,0 +1,15 @@
+---
+- name: Get latest stable kubectl version
+  shell: curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt
+  register: kubectl_version_raw
+
+- name: Set kubectl version fact
+  set_fact:
+    kubectl_version: "{{ kubectl_version_raw.stdout }}"
+
+- name: Download kubectl binary
+  get_url:
+    url: "https://storage.googleapis.com/kubernetes-release/release/{{ kubectl_version }}/bin/linux/amd64/kubectl"
+    dest: /usr/local/bin/kubectl
+    mode: '0755'
+    validate_certs: no

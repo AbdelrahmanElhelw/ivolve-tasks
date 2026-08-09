@@ -1,0 +1,46 @@
+---
+
+- name: Remove ALL old Java 17 packages
+  dnf:
+    name: "java-17-openjdk*"
+    state: absent
+  
+- name: Install Java (Jenkins Dependency)
+  dnf:
+    name: java-21-openjdk
+    state: present
+
+- name: Add JEnkins Reposirtory
+  get_url:
+    url: https://pkg.jenkins.io/redhat-stable/jenkins.repo
+    dest: /etc/yum.repos.d/jenkins.repo
+
+  
+- name: Import Jenkins GPG key
+  rpm_key:
+    state: present
+    key: https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+
+- name: Install Jenkins
+  dnf:
+    name: jenkins
+    state: present
+
+- name: Start Jenkins manually in the background
+  shell: nohup java -jar /usr/share/java/jenkins.war --httpPort=8080 > /tmp/jenkins.log 2>&1 &
+  async: 10
+  poll: 0
+
+- name: Wait until Jenkins creates the initial password file
+  wait_for:
+    path: /root/.jenkins/secrets/initialAdminPassword
+    state: present
+    timeout: 120  
+
+- name: Read Jenkins initial admin password
+  shell: cat /root/.jenkins/secrets/initialAdminPassword
+  register: jenkins_pass
+
+- name: Print Jenkins Admin Password
+  debug:
+    msg: "The initial admin password is: {{ jenkins_pass.stdout }}"
