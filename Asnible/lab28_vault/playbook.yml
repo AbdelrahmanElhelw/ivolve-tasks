@@ -1,0 +1,44 @@
+---
+- name: Configure MariaDB and Secure it with Ansible Vault
+  hosts: managed_nodes
+  become: yes
+  vars_files:
+    - secret.yml
+  tasks:
+    - name: Install MariaDB Server and PyMySQL
+      dnf:
+        name:
+          - mariadb-server
+          - python3-PyMySQL
+        state: present
+        update_cache: yes
+
+    - name: Initialize MariaDB Data Directory
+      shell: mysql_install_db --user=mysql --datadir=/var/lib/mysql
+      args:
+        creates: /var/lib/mysql/ibdata1
+
+    - name: Start MariaDB manually in background
+      shell: su -s /bin/bash mysql -c "nohup mysqld_safe --datadir=/var/lib/mysql > /tmp/mysql.log 2>&1 &"
+      async: 10
+      poll: 0
+
+    - name: Wait for DB to be ready
+      wait_for:
+        path: /var/lib/mysql/mysql.sock
+        state: present
+        timeout: 30
+        
+    - name: Create iVovle database
+      mysql_db:
+        name: iVovle
+        state: present
+        login_unix_socket: /var/lib/mysql/mysql.sock
+
+    - name: Create DB user with all privileges on iVovle DB
+      mysql_user:
+        name: ivolve_user
+        password: "{{ user_password }}"
+        priv: 'iVovle.*:ALL'
+        state: present
+        login_unix_socket: /var/lib/mysql/mysql.sock
